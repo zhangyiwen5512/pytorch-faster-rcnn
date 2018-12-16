@@ -1,0 +1,80 @@
+Evaluating detections
+Writing aeroplane VOC results file
+Writing bicycle VOC results file
+Writing bird VOC results file
+Writing boat VOC results file
+Writing bottle VOC results file
+Writing bus VOC results file
+Writing car VOC results file
+Writing cat VOC results file
+Writing chair VOC results file
+Writing cow VOC results file
+Writing diningtable VOC results file
+Writing dog VOC results file
+Writing horse VOC results file
+Writing motorbike VOC results file
+Writing person VOC results file
+Writing pottedplant VOC results file
+Writing sheep VOC results file
+Writing sofa VOC results file
+Writing train VOC results file
+Writing tvmonitor VOC results file
+VOC07 metric? Yes
+AP for aeroplane = 0.7495
+AP for bicycle = 0.8198
+AP for bird = 0.7536
+AP for boat = 0.6365
+AP for bottle = 0.6275
+AP for bus = 0.7985
+AP for car = 0.8490
+AP for cat = 0.8662
+AP for chair = 0.5803
+AP for cow = 0.8338
+AP for diningtable = 0.7104
+AP for dog = 0.8658
+AP for horse = 0.8413
+AP for motorbike = 0.7842
+AP for person = 0.7938
+AP for pottedplant = 0.4627
+AP for sheep = 0.7676
+AP for sofa = 0.7617
+AP for train = 0.7918
+AP for tvmonitor = 0.7424
+Mean AP = 0.7518
+~~~~~~~~
+Results:
+0.749
+0.820
+0.754
+0.636
+0.628
+0.799
+0.849
+0.866
+0.580
+0.834
+0.710
+0.866
+0.841
+0.784
+0.794
+0.463
+0.768
+0.762
+0.792
+0.742
+0.752
+~~~~~~~~
+
+--------------------------------------------------------------
+Results computed with the **unofficial** Python eval code.
+Results should be very close to the official MATLAB eval code.
+Recompute with `./tools/reval.py --matlab ...` for your paper.
+-- Thanks, The Management
+--------------------------------------------------------------
+2085.15user 309.12system 21:45.94elapsed 183%CPU (0avgtext+0avgdata 2618372maxresident)k
+947072inputs+78328outputs (151major+787636minor)pagefaults 0swaps
+
+./experiments/scripts/train_faster_rcnn.sh 0 pascal_voc res101
+
+
