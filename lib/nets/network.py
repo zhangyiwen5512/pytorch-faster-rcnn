@@ -322,7 +322,7 @@ class Network(nn.Module):
       self._losses['rpn_loss_box'] = rpn_loss_box
 
       loss = cross_entropy + loss_box + rpn_cross_entropy + rpn_loss_box
-    elif cfg.loss_stratrgy == 'RPN_ONLY':
+    elif cfg.loss_strategy == 'RPN_ONLY':
       loss  = rpn_cross_entropy + rpn_loss_box
       self._losses['rpn_cross_entropy'] = rpn_cross_entropy
       self._losses['rpn_loss_box'] = rpn_loss_box
@@ -498,9 +498,9 @@ class Network(nn.Module):
       pool5 = self._roi_pool_layer(net_conv, rois)
 
     if cfg.loss_strategy == 'RCNN_ONLY' or cfg.loss_strategy == 'RCNN+RPN':
-      pool5 = pool5.detach()
+#      pool5 = pool5.detach()
       lam = cfg.lamda
-      rcnn_index = np.arange(pool5.szie()[0])
+      rcnn_index = np.arange(pool5.size()[0])
       np.random.shuffle(rcnn_index)
       self.rcnn_mix_index = rcnn_index
       pool5 = lam * pool5 + (1 - lam) * pool5[rcnn_index, :]

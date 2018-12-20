@@ -292,7 +292,7 @@ class SolverWrapper(object):
         #   print(k, utils.timer.timer.average_time(k))
 
       # Snapshotting
-      if iter % cfg.TRAIN.SNAPSHOT_ITERS == 0:
+      if iter % cfg.TRAIN.SNAPSHOT_ITERS == 0 or iter == 1:
         last_snapshot_iter = iter
         ss_path, np_path = self.snapshot(iter)
         np_paths.append(np_path)

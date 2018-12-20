@@ -35,9 +35,9 @@ __C.test = False
 __C.lamda = genLamda()
 
 # loss strategy 1 old,  2 new,sperate train
-#__C.loss_strategy = 'RCNN_ONLY'
+__C.loss_strategy = 'RCNN_ONLY'
 #__C.loss_strategy = 'RPN_ONLY'
-__C.loss_strategy = 'RCNN+RPN'
+#__C.loss_strategy = 'RCNN+RPN'
 #__C.loss_strategy = 'NOCHANGE'
 
 __C.RCNN_MIX = True
