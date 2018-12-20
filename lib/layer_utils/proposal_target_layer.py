@@ -35,11 +35,8 @@ def proposal_target_layer(rpn_rois, rpn_scores, gt_boxes, _num_classes):
     all_rois = torch.cat(
       (all_rois, torch.cat((zeros, gt_boxes[:, :-1]), 1))#[2000,5]+[1,5]=[2001,5]
     , 0)
-#    print(zeros.size,all_rois.size,all_rois.size)
     # not sure if it a wise appending, but anyway i am not using it
     all_scores = torch.cat((all_scores, zeros), 0)
-
-
 
   num_images = 1
   rois_per_image = cfg.TRAIN.BATCH_SIZE / num_images#256

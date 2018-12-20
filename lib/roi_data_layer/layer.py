@@ -40,15 +40,11 @@ class RoIDataLayer(object):
       np.random.seed(millis)
     
     if cfg.TRAIN.ASPECT_GROUPING:
-#      print("________________________________________________________________________________________________")
       widths = np.array([r['width'] for r in self._roidb])
       heights = np.array([r['height'] for r in self._roidb])
-#      print(widths.shape)
       horz = (widths >= heights)#取出对应的长宽高，水平的图片，垂直的图片
       vert = np.logical_not(horz)
       horz_inds = np.where(horz)[0]#找到水平的inds
-#      print(horz.shape)
-#      print("________________________________________________________________________________________________")
       vert_inds = np.where(vert)[0]#找到垂直的inds
       inds = np.hstack((#将这些图片打乱顺序
           np.random.permutation(horz_inds),
@@ -94,6 +90,5 @@ class RoIDataLayer(object):
     Get blobs and copy them into this layer's top blob vector.
     得到的图片是混合后的一张图
     """
-#    print("__________________________________________def forward(self):______________________________________________________")
     blobs = self._get_next_minibatch()
     return blobs

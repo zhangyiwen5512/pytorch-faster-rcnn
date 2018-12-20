@@ -35,10 +35,11 @@ from scipy.misc import imresize
 
 class Network(nn.Module):
   def __init__(self):
-#    print("_________________________nn.Module.__init__(self)_________________________________")
     nn.Module.__init__(self)# 此处初始化resnet属性self。net是一个module的子类
     self._predictions = {}
     self._losses = {}
+#    if cfg.TRAIN.IMS_PER_BATCH == 2:
+ #     self._RPN_losses = {}
     self._anchor_targets = {}
     self._proposal_targets = {}
     self._layers = {}
@@ -144,10 +145,12 @@ class Network(nn.Module):
     self._anchor_targets['rpn_bbox_outside_weights'] = rpn_bbox_outside_weights
 ##############################################################################################################
     if cfg.TRAIN.IMS_PER_BATCH == 2 :
+ ###################################################################   ??????
       rpn_labels2, rpn_bbox_targets2, rpn_bbox_inside_weights2, rpn_bbox_outside_weights2 = \
       anchor_target_layer(
       rpn_cls_score.data, self._gt_boxes2.data.cpu().numpy(), self._im_info, self._feat_stride, self._anchors.data.cpu().numpy(), self._num_anchors)
       ##[1,1,A * height,width]标签 [1,height,width ,9*4]回归 [1,height,width ,9*4] [1,height,width ,9*4] 转化为numpy
+#########################################################################???????????
 
       rpn_labels2 = torch.from_numpy(rpn_labels2).float().to(self._device) #.set_shape([1, 1, None, None])
       rpn_bbox_targets2 = torch.from_numpy(rpn_bbox_targets2).float().to(self._device)#.set_shape([1, None, None, self._num_anchors * 4])
@@ -198,59 +201,140 @@ class Network(nn.Module):
 
   def _smooth_l1_loss(self, bbox_pred, bbox_targets, bbox_inside_weights, bbox_outside_weights, sigma=1.0, dim=[1]):
     sigma_2 = sigma ** 2 # 9 sigma=3
-    box_diff = bbox_pred - bbox_targets
-    in_box_diff = bbox_inside_weights * box_diff
+    box_diff = bbox_pred - bbox_targets# 预测和gt的差值
+    in_box_diff = bbox_inside_weights * box_diff# 前景则为box_diff
     abs_in_box_diff = torch.abs(in_box_diff)
-    smoothL1_sign = (abs_in_box_diff < 1. / sigma_2).detach().float()
+    smoothL1_sign = (abs_in_box_diff < 1. / sigma_2).detach().float()# <差值 1/9 为正号，大于为0
+    #smoothL1_sign表示绝对值小于sigma_2   1-smoothL1_sign表示else
     in_loss_box = torch.pow(in_box_diff, 2) * (sigma_2 / 2.) * smoothL1_sign \
                   + (abs_in_box_diff - (0.5 / sigma_2)) * (1. - smoothL1_sign)
     out_loss_box = bbox_outside_weights * in_loss_box
     loss_box = out_loss_box
+    #减序列
     for i in sorted(dim, reverse=True):
       loss_box = loss_box.sum(i)
+
     loss_box = loss_box.mean()
     return loss_box
 
 ################################################################################################################loss计算
   def _add_losses(self, sigma_rpn=3.0):
-    # RPN, class loss
-    rpn_cls_score = self._predictions['rpn_cls_score_reshape'].view(-1, 2)#[前景loss，背景loss][Anchorsize*width*height]个anchor
-    rpn_label = self._anchor_targets['rpn_labels'].view(-1)
-    rpn_select = (rpn_label.data != -1).nonzero().view(-1)#选取的前景及背景
-    rpn_cls_score = rpn_cls_score.index_select(0, rpn_select).contiguous().view(-1, 2)#[256,gt]
-    rpn_label = rpn_label.index_select(0, rpn_select).contiguous().view(-1)#[256]
-    # 是rpn部分的loss
-    rpn_cross_entropy = F.cross_entropy(rpn_cls_score, rpn_label)
+    if  cfg.TRAIN.IMS_PER_BATCH == 1:
+      # RPN, class loss
+      rpn_cls_score = self._predictions['rpn_cls_score_reshape'].view(-1, 2)#[前景loss，背景loss][Anchorsize*width*height]个anchor
+      rpn_label = self._anchor_targets['rpn_labels'].view(-1)
+      rpn_select = (rpn_label.data != -1).nonzero().view(-1)#选取的前景及背景
+      rpn_cls_score = rpn_cls_score.index_select(0, rpn_select).contiguous().view(-1, 2)#[256,gt]
+      rpn_label = rpn_label.index_select(0, rpn_select).contiguous().view(-1)#[256]
+      # 是rpn部分的loss
+      rpn_cross_entropy = F.cross_entropy(rpn_cls_score, rpn_label)
 
-    # RPN, bbox loss
-    rpn_bbox_pred = self._predictions['rpn_bbox_pred']# batch * h * w * (num_anchors*4) 回归框预测的坐标
-    rpn_bbox_targets = self._anchor_targets['rpn_bbox_targets']# [1,height,width ,9*4] 回归框目标的坐标(和gt的回归值)
-    rpn_bbox_inside_weights = self._anchor_targets['rpn_bbox_inside_weights']# [1,height,width ,9*4]
-    rpn_bbox_outside_weights = self._anchor_targets['rpn_bbox_outside_weights']# [1,height,width ,9*4]
-    # 是rpn部分的loss
-    rpn_loss_box = self._smooth_l1_loss(rpn_bbox_pred, rpn_bbox_targets, rpn_bbox_inside_weights,
+      # RPN, bbox loss
+      rpn_bbox_pred = self._predictions['rpn_bbox_pred']# batch * h * w * (num_anchors*4) 回归框预测的坐标
+      rpn_bbox_targets = self._anchor_targets['rpn_bbox_targets']# [1,height,width ,9*4] 回归框目标的坐标(和gt的回归值)
+      rpn_bbox_inside_weights = self._anchor_targets['rpn_bbox_inside_weights']# [1,height,width ,9*4]
+      rpn_bbox_outside_weights = self._anchor_targets['rpn_bbox_outside_weights']# [1,height,width ,9*4]
+      # 是rpn部分的loss
+      rpn_loss_box = self._smooth_l1_loss(rpn_bbox_pred, rpn_bbox_targets, rpn_bbox_inside_weights,
+                                          rpn_bbox_outside_weights, sigma=sigma_rpn, dim=[1, 2, 3])
+    elif cfg.TRAIN.IMS_PER_BATCH == 2:
+
+      ############ img1
+      # RPN, class loss
+      rpn_cls_score = self._predictions['rpn_cls_score_reshape'].view(-1, 2)#[前景loss，背景loss][Anchorsize*width*height]个anchor
+      rpn_label = self._anchor_targets['rpn_labels'].view(-1)
+      rpn_select = (rpn_label.data != -1).nonzero().view(-1)#选取的前景及背景
+      rpn_cls_score = rpn_cls_score.index_select(0, rpn_select).contiguous().view(-1, 2)#[256,gt]
+      rpn_label = rpn_label.index_select(0, rpn_select).contiguous().view(-1)#[256]
+      # 是rpn部分的loss
+      rpn_cross_entropy1 = F.cross_entropy(rpn_cls_score, rpn_label)
+
+      # RPN, bbox loss
+      rpn_bbox_pred = self._predictions['rpn_bbox_pred']# batch * h * w * (num_anchors*4) 回归框预测的坐标
+      rpn_bbox_targets = self._anchor_targets['rpn_bbox_targets']# [1,height,width ,9*4] 回归框目标的坐标(和gt的回归值)
+      rpn_bbox_inside_weights = self._anchor_targets['rpn_bbox_inside_weights']# [1,height,width ,9*4]
+      rpn_bbox_outside_weights = self._anchor_targets['rpn_bbox_outside_weights']# [1,height,width ,9*4]
+      # 是rpn部分的loss
+      rpn_loss_box1 = self._smooth_l1_loss(rpn_bbox_pred, rpn_bbox_targets, rpn_bbox_inside_weights,
                                           rpn_bbox_outside_weights, sigma=sigma_rpn, dim=[1, 2, 3])
 
-    # RCNN, class loss
-    cls_score = self._predictions["cls_score"]
-    label = self._proposal_targets["labels"].view(-1)
-    cross_entropy = F.cross_entropy(cls_score.view(-1, self._num_classes), label)
+      ############img2
+      # RPN, class loss
+      rpn_label2 = self._anchor_targets['rpn_labels2'].view(-1)
+      rpn_select2 = (rpn_label2.data != -1).nonzero().view(-1)#选取的前景及背景
+      rpn_cls_score = self._predictions['rpn_cls_score_reshape'].view(-1, 2)#[前景loss，背景loss][Anchorsize*width*height]个anchor
+      rpn_cls_score2 = rpn_cls_score.index_select(0, rpn_select2).contiguous().view(-1, 2)#[256,gt]
+      rpn_label2 = rpn_label2.index_select(0, rpn_select2).contiguous().view(-1)#[256]
+      # 是rpn部分的loss
+      rpn_cross_entropy2 = F.cross_entropy(rpn_cls_score2, rpn_label2)
 
-    # RCNN, bbox loss
-    bbox_pred = self._predictions['bbox_pred']
-    bbox_targets = self._proposal_targets['bbox_targets']
-    bbox_inside_weights = self._proposal_targets['bbox_inside_weights']
-    bbox_outside_weights = self._proposal_targets['bbox_outside_weights']
-    loss_box = self._smooth_l1_loss(bbox_pred, bbox_targets, bbox_inside_weights, bbox_outside_weights)
+      # RPN, bbox loss
+      rpn_bbox_targets2 = self._anchor_targets['rpn_bbox_targets2']# [1,height,width ,9*4] 回归框目标的坐标(和gt的回归值)
+      rpn_bbox_inside_weights2 = self._anchor_targets['rpn_bbox_inside_weights2']# [1,height,width ,9*4]
+      rpn_bbox_outside_weights2 = self._anchor_targets['rpn_bbox_outside_weights2']# [1,height,width ,9*4]
 
-    self._losses['cross_entropy'] = cross_entropy
-    self._losses['loss_box'] = loss_box
-    self._losses['rpn_cross_entropy'] = rpn_cross_entropy
-    self._losses['rpn_loss_box'] = rpn_loss_box
-##################################################################################################################
-    loss = cross_entropy + loss_box + rpn_cross_entropy + rpn_loss_box
+      # 是rpn部分的loss
 
-    loss_RPN = rpn_cross_entropy + rpn_loss_box
+      rpn_loss_box2 = self._smooth_l1_loss(rpn_bbox_pred, rpn_bbox_targets2, rpn_bbox_inside_weights2,
+                                          rpn_bbox_outside_weights2, sigma=sigma_rpn, dim=[1, 2, 3])
+##############################################3
+      lam = cfg.lamda
+      rpn_cross_entropy = lam * rpn_cross_entropy1 + (1 - lam) * rpn_cross_entropy2
+      rpn_loss_box = lam * rpn_loss_box1 + (1 - lam) * rpn_loss_box2
+    else:
+       raise Exception("check cfg.TRAIN.IMS_PER_BACTH in /lib/model/config.py or experiments/cfgs/*.yml")
+
+    if cfg.loss_strategy == 'RCNN_ONLY' or cfg.loss_strategy == 'RCNN+RPN' or cfg.loss_strategy == 'NOCHANGE':
+      # RCNN, class loss
+      cls_score = self._predictions["cls_score"]# [256,21]
+      label = self._proposal_targets["labels"].view(-1)#[256]
+      # RCNN的loss
+      cross_entropy = F.cross_entropy(cls_score.view(-1, self._num_classes), label)
+
+      # RCNN, bbox loss
+      bbox_pred = self._predictions['bbox_pred']# [256,84]
+      bbox_targets = self._proposal_targets['bbox_targets']# [256,84]
+      bbox_inside_weights = self._proposal_targets['bbox_inside_weights']# [256,84]
+      bbox_outside_weights = self._proposal_targets['bbox_outside_weights']# [256,84]
+      # RCNN box的loss
+
+      loss_box = self._smooth_l1_loss(bbox_pred, bbox_targets, bbox_inside_weights, bbox_outside_weights)
+
+    if cfg.loss_strategy == 'RCNN_ONLY' or cfg.loss_strategy == 'RCNN+RPN':
+      lam = cfg.lamda
+      label2 = self._proposal_targets['labels'][self.rcnn_mix_index, :].view(-1)
+      cross_entropy2 = F.cross_entropy(cls_score.view(-1, self._num_classes), label2)
+      cross_entropy = lam * cross_entropy + (1 - lam) * cross_entropy2
+
+      bbox_targets2 = self._proposal_targets['bbox_targets'][self.rcnn_mix_index, :]
+      bbox_inside_weights2 = self._proposal_targets['bbox_inside_weights'][self.rcnn_mix_index, :]
+      bbox_outside_weights2 = self._proposal_targets['bbox_outside_weights'][self.rcnn_mix_index, :]
+      loss_box2 = self._smooth_l1_loss(bbox_pred, bbox_targets2, bbox_inside_weights2, bbox_outside_weights2)
+      loss_box = lam * loss_box + (1 - lam) * loss_box2
+
+    if cfg.loss_strategy == 'RPN_ONLY':
+      pass
+
+    if cfg.loss_strategy == 'RCNN+RPN' or cfg.loss_strategy == 'NOCHANGE':
+      self._losses['cross_entropy'] = cross_entropy
+      self._losses['loss_box'] = loss_box
+      self._losses['rpn_cross_entropy'] = rpn_cross_entropy
+      self._losses['rpn_loss_box'] = rpn_loss_box
+
+      loss = cross_entropy + loss_box + rpn_cross_entropy + rpn_loss_box
+    elif cfg.loss_stratrgy == 'RPN_ONLY':
+      loss  = rpn_cross_entropy + rpn_loss_box
+      self._losses['rpn_cross_entropy'] = rpn_cross_entropy
+      self._losses['rpn_loss_box'] = rpn_loss_box
+
+    elif cfg.loss_strategy == 'RCNN_ONLY':
+      loss = cross_entropy + loss_box
+      self._losses['cross_entropy'] = cross_entropy
+      self._losses['loss_box'] = loss_box
+
+    else:
+      raise Exception("check cfg.TRAIN.loss_strategy in /lib/model/config.py or experiments/cfgs/*.yml")
+
 ##################################################################################################################
     self._losses['total_loss'] = loss
 
@@ -276,12 +360,9 @@ class Network(nn.Module):
     rpn_cls_score = rpn_cls_score.permute(0, 2, 3, 1) # batch * h * w * (num_anchors * 2) [1,57,38,18]
     rpn_cls_score_reshape = rpn_cls_score_reshape.permute(0, 2, 3, 1).contiguous()  # batch * (num_anchors*h) * w * 2 [1,513,38,2]
 
-
     #最终预测结果rpn_cls_pred
     rpn_cls_pred = torch.max(rpn_cls_score_reshape.view(-1, 2), 1)[1]# 9*57*38=19494,是index
-
 #---------------------做anchor的bounding box预测--------------------------
-
     rpn_bbox_pred = self.rpn_bbox_pred_net(rpn)
     rpn_bbox_pred = rpn_bbox_pred.permute(0, 2, 3, 1).contiguous()  # batch * h * w * (num_anchors*4)
 
@@ -348,7 +429,6 @@ class Network(nn.Module):
     self._init_modules()
 
   def _init_modules(self):
-#    print("_________________________self._init_head_tail()________________________________")
     self._init_head_tail()#c初始化惹101和vgg16网络
 ####################################################################################################################################################
     # rpn
@@ -398,12 +478,6 @@ class Network(nn.Module):
     # This is just _build_network in tf-faster-rcnn
     torch.backends.cudnn.benchmark = False
     net_conv = self._image_to_head()
-#    print("___________________________________________________________________________________________")
- #   print(net_conv.size(0))
- #   print(net_conv.size(1))
-   # print(net_conv.size(2))
-  #  print(net_conv.size(3))
-#    print("___________________________________________________________________________________________")
     # build the anchors for the image 特征图net_conv.size(2)height  net_conv.size(3)weight
     #一张图片得到9×K个anchor feature size=(width/stride)*(height/stride) == K
     self._anchor_component(net_conv.size(2), net_conv.size(3))
@@ -412,10 +486,24 @@ class Network(nn.Module):
     #得到roi[256, 5][class,x1,y1,x2,y2]
     rois = self._region_proposal(net_conv)
     #--------------------------------POLING---------------------------------------------------------------------
+    if cfg.loss_strategy == 'RPN_ONLY':##########
+      for k in self._predictions.keys():
+        self._score_summaries[k] = self._predictions[k]
+      return rois, None, None
+
+
     if cfg.POOLING_MODE == 'crop':#[256,1024,7,7]
       pool5 = self._crop_pool_layer(net_conv, rois)
     else:
       pool5 = self._roi_pool_layer(net_conv, rois)
+
+    if cfg.loss_strategy == 'RCNN_ONLY' or cfg.loss_strategy == 'RCNN+RPN':
+      pool5 = pool5.detach()
+      lam = cfg.lamda
+      rcnn_index = np.arange(pool5.szie()[0])
+      np.random.shuffle(rcnn_index)
+      self.rcnn_mix_index = rcnn_index
+      pool5 = lam * pool5 + (1 - lam) * pool5[rcnn_index, :]
 
     if self._mode == 'TRAIN':
       torch.backends.cudnn.benchmark = True # benchmark because now the input size are fixed
@@ -447,14 +535,14 @@ class Network(nn.Module):
     self._gt_boxes = torch.from_numpy(gt_boxes).to(self._device) if gt_boxes is not None else None
 ######################################################################################################################
     if cfg.TRAIN.IMS_PER_BATCH == 2 :
-      self._gt_boxes2 = torch.from_numpy(gt_boxes2).to(self._device) if gt_boxes is not None else None
+      self._gt_boxes2 = torch.from_numpy(gt_boxes2).to(self._device) if gt_boxes2 is not None else None
 ######################################################################################################################
+
     self._mode = mode
     #得到roi[256, 5][class,x1,y1,x2,y2]
     #cls_prob[256，21],若是前景则得到其预测分数
     #bbox_pred[256,84]，得到其坐标
     rois, cls_prob, bbox_pred = self._predict()
-
     if mode == 'TEST':
       stds = bbox_pred.data.new(cfg.TRAIN.BBOX_NORMALIZE_STDS).repeat(self._num_classes).unsqueeze(0).expand_as(bbox_pred)
       means = bbox_pred.data.new(cfg.TRAIN.BBOX_NORMALIZE_MEANS).repeat(self._num_classes).unsqueeze(0).expand_as(bbox_pred)
@@ -496,6 +584,8 @@ class Network(nn.Module):
                                                      self._predictions['cls_prob'].data.cpu().numpy(), \
                                                      self._predictions['bbox_pred'].data.cpu().numpy(), \
                                                      self._predictions['rois'].data.cpu().numpy()
+
+
     return cls_score, cls_prob, bbox_pred, rois
 
   def delete_intermediate_states(self):
@@ -513,11 +603,26 @@ class Network(nn.Module):
     return summary
 
   def train_step(self, blobs, train_op):
-    self.forward(blobs['data'], blobs['im_info'], blobs['gt_boxes'], blobs['gt_boxes2'])
-    rpn_loss_cls, rpn_loss_box, loss_cls, loss_box, loss = self._losses["rpn_cross_entropy"].item(), \
+    if cfg.TRAIN.IMS_PER_BATCH == 1:
+      self.forward(blobs['data'], blobs['im_info'], blobs['gt_boxes'], None)
+    if cfg.TRAIN.IMS_PER_BATCH == 2:
+      self.forward(blobs['data'], blobs['im_info'], blobs['gt_boxes'], blobs['gt_boxes2'])
+
+    if cfg.loss_strategy == 'NOCHANGE' or cfg.loss_strategy == 'RCNN+RPN':
+      rpn_loss_cls, rpn_loss_box, loss_cls, loss_box, loss = self._losses["rpn_cross_entropy"].item(), \
                                                                         self._losses['rpn_loss_box'].item(), \
                                                                         self._losses['cross_entropy'].item(), \
                                                                         self._losses['loss_box'].item(), \
+                                                                        self._losses['total_loss'].item()
+    if cfg.loss_strategy == 'RCNN_ONLY':
+      rpn_loss_cls, rpn_loss_box, loss_cls, loss_box, loss = -1, -1, \
+                                                                        self._losses['cross_entropy'].item(), \
+                                                                        self._losses['loss_box'].item(), \
+                                                                        self._losses['total_loss'].item()
+    if cfg.loss_strategy == 'NOCHANGE' or cfg.loss_strategy == 'RCNN+RPN':
+      rpn_loss_cls, rpn_loss_box, loss_cls, loss_box, loss = self._losses["rpn_cross_entropy"].item(), \
+                                                                        self._losses['rpn_loss_box'].item(), \
+                                                                        -1, -1,\
                                                                         self._losses['total_loss'].item()
     #utils.timer.timer.tic('backward')
     train_op.zero_grad()
@@ -527,34 +632,48 @@ class Network(nn.Module):
 
     self.delete_intermediate_states()
 
+
     return rpn_loss_cls, rpn_loss_box, loss_cls, loss_box, loss
 
 
 
-
-
-
   def train_step_with_summary(self, blobs, train_op):
+    if cfg.TRAIN.IMS_PER_BATCH == 1:
+      self.forward(blobs['data'], blobs['im_info'], blobs['gt_boxes'], None)
+    if cfg.TRAIN.IMS_PER_BATCH == 2:
       self.forward(blobs['data'], blobs['im_info'], blobs['gt_boxes'], blobs['gt_boxes2'])
+    if cfg.loss_strategy == 'NOCHANGE' or cfg.loss_strategy == 'RCNN+RPN':
       rpn_loss_cls, rpn_loss_box, loss_cls, loss_box, loss = self._losses["rpn_cross_entropy"].item(), \
                                                                         self._losses['rpn_loss_box'].item(), \
                                                                         self._losses['cross_entropy'].item(), \
                                                                         self._losses['loss_box'].item(), \
                                                                         self._losses['total_loss'].item()
-      train_op.zero_grad()
-      self._losses['total_loss'].backward()
-      train_op.step()
-      #######################################################################
-      summary = self._run_summary_op()
+    if cfg.loss_strategy == 'RCNN_ONLY':
+      rpn_loss_cls, rpn_loss_box, loss_cls, loss_box, loss = -1, -1, \
+                                                                        self._losses['cross_entropy'].item(), \
+                                                                        self._losses['loss_box'].item(), \
+                                                                        self._losses['total_loss'].item()
+    if cfg.loss_strategy == 'NOCHANGE' or cfg.loss_strategy == 'RCNN+RPN':
+      rpn_loss_cls, rpn_loss_box, loss_cls, loss_box, loss = self._losses["rpn_cross_entropy"].item(), \
+                                                                        self._losses['rpn_loss_box'].item(), \
+                                                                        -1, -1,\
+                                                                        self._losses['total_loss'].item()
+    train_op.zero_grad()#
+    self._losses['total_loss'].backward()
+    train_op.step()
+    summary = self._run_summary_op()
 
-      self.delete_intermediate_states()
+    self.delete_intermediate_states()
 
-      return rpn_loss_cls, rpn_loss_box, loss_cls, loss_box, loss, summary
+    return rpn_loss_cls, rpn_loss_box, loss_cls, loss_box, loss, summary
 
 
 
   def train_step_no_return(self, blobs, train_op):
-    self.forward(blobs['data'], blobs['im_info'], blobs['gt_boxes'], blobs['gt_boxes2'])
+    if cfg.TRAIN.IMS_PER_BATCH == 1:
+      self.forward(blobs['data'], blobs['im_info'], blobs['gt_boxes'], None)
+    if cfg.TRAIN.IMS_PER_BATCH == 2:
+      self.forward(blobs['data'], blobs['im_info'], blobs['gt_boxes'], blobs['gt_boxes2'])
     train_op.zero_grad()
     self._losses['total_loss'].backward()
     train_op.step()

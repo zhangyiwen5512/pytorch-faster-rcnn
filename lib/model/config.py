@@ -28,8 +28,19 @@ cfg = __C
 # Training options
 #
 
+# test
+__C.test = False
+
 # Mixup lamda
 __C.lamda = genLamda()
+
+# loss strategy 1 old,  2 new,sperate train
+#__C.loss_strategy = 'RCNN_ONLY'
+#__C.loss_strategy = 'RPN_ONLY'
+__C.loss_strategy = 'RCNN+RPN'
+#__C.loss_strategy = 'NOCHANGE'
+
+__C.RCNN_MIX = True
 
 
 __C.TRAIN = edict()
@@ -311,7 +322,14 @@ def get_output_dir(imdb, weights_filename):
   """
   outdir = osp.abspath(osp.join(__C.ROOT_DIR, 'output', __C.EXP_DIR, imdb.name))
   if weights_filename is None:
-    weights_filename = 'default'
+    if __C.loss_strategy == 'NOCHANGE':
+      weights_filename = 'default'
+    elif  __C.loss_strategy == 'RCNN+RPN':
+      weights_filename = 'RCNN+RPN'
+    elif  __C.loss_strategy == 'RCNN_ONLY':
+      weights_filename = 'RCNN_ONLY'
+    elif __C.loss_strategy == 'RPN_ONLY':
+      weights_filename = 'RPN_ONLY'
   outdir = osp.join(outdir, weights_filename)
   if not os.path.exists(outdir):
     os.makedirs(outdir)
@@ -327,7 +345,14 @@ def get_output_tb_dir(imdb, weights_filename):
   """
   outdir = osp.abspath(osp.join(__C.ROOT_DIR, 'tensorboard', __C.EXP_DIR, imdb.name))
   if weights_filename is None:
-    weights_filename = 'default'
+    if __C.loss_strategy == 'NOCHANGE':
+      weights_filename = 'default'
+    elif  __C.loss_strategy == 'RCNN+RPN':
+      weights_filename = 'RCNN+RPN'
+    elif  __C.loss_strategy == 'RCNN_ONLY':
+      weights_filename = 'RCNN_ONLY'
+    elif __C.loss_strategy == 'RPN_ONLY':
+      weights_filename = 'RPN_ONLY'
   outdir = osp.join(outdir, weights_filename)
   if not os.path.exists(outdir):
     os.makedirs(outdir)

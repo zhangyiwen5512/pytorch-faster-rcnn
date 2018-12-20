@@ -18,6 +18,7 @@ try:
 except ImportError:
   import pickle
 
+import cv2
 import torch
 import torch.optim as optim
 
@@ -214,7 +215,6 @@ class SolverWrapper(object):
       ss_paths.remove(sfile)
 
   def train_model(self, max_iters):
-#    print("_________________________build layer________________________________")
     # Build data layers for both training and validation set
     # 构建ROI数据集合,随机打乱顺序
     self.data_layer = RoIDataLayer(self.roidb, self.imdb.num_classes)
@@ -222,12 +222,10 @@ class SolverWrapper(object):
 
     # Construct the computation graph构建计算图,tensoroard
     # 初始化weight,初始化各层
-#    print("_________________________lr, train_op = self.construct_graph()________________________________")
     lr, train_op = self.construct_graph()
 
     # Find previous snapshots if there is any to restore from
     lsf, nfiles, sfiles = self.find_previous()
-#    print("_________________________lsf, nfiles, sfiles = self.find_previous()________________________________")
     # Initialize the variables or restore them from the last snapshot
     if lsf == 0:
       lr, last_snapshot_iter, stepsizes, np_paths, ss_paths = self.initialize()
@@ -241,7 +239,6 @@ class SolverWrapper(object):
     stepsizes.reverse()
     next_stepsize = stepsizes.pop()
 
-#    print("_________________________self.net.train()________________________________")
     self.net.train()
     self.net.to(self.net._device)#数据传入设备
 ###################################正式训练开始###################################################################
@@ -258,13 +255,14 @@ class SolverWrapper(object):
       # Get training data, one batch at a time ,这里做图片读取修改
 #########################################################
       blobs = self.data_layer.forward()#转到layer.forward
+
 #########################################################
 
       now = time.time()
       if iter == 1 or now - last_summary_time > cfg.TRAIN.SUMMARY_INTERVAL:
         # Compute the graph with summary
 #############################################################################################
-        # 计算loss，反向传播
+        # 计算loss，反向传播 rpn_loss 仅在分开训练时使用
         rpn_loss_cls, rpn_loss_box, loss_cls, loss_box, total_loss, summary = \
           self.net.train_step_with_summary(blobs, self.optimizer)
 #############################################################################################
@@ -276,7 +274,7 @@ class SolverWrapper(object):
         last_summary_time = now
       else:
 #############################################################################################
-        # Compute the graph without summary
+        # Compute the graph without summary  rpn_loss 仅在分开训练时使用
         rpn_loss_cls, rpn_loss_box, loss_cls, loss_box, total_loss = \
           self.net.train_step(blobs, self.optimizer)
 #############################################################################################
@@ -287,6 +285,7 @@ class SolverWrapper(object):
         print('iter: %d / %d, total loss: %.6f\n >>> rpn_loss_cls: %.6f\n '
               '>>> rpn_loss_box: %.6f\n >>> loss_cls: %.6f\n >>> loss_box: %.6f\n >>> lr: %f' % \
               (iter, max_iters, total_loss, rpn_loss_cls, rpn_loss_box, loss_cls, loss_box, lr))
+
         print('speed: {:.3f}s / iter'.format(utils.timer.timer.average_time()))
 
         # for k in utils.timer.timer._average_time.keys():

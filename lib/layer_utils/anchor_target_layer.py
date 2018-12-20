@@ -60,18 +60,13 @@ def anchor_target_layer(rpn_cls_score, gt_boxes, im_info, _feat_stride, all_anch
   overlaps = bbox_overlaps(
     np.ascontiguousarray(anchors, dtype=np.float),
     np.ascontiguousarray(gt_boxes, dtype=np.float))
-
   argmax_overlaps = overlaps.argmax(axis=1)#得到序号[inds_inside]
   #[inds_inside]
   max_overlaps = overlaps[np.arange(len(inds_inside)), argmax_overlaps]#得到最大值的值,每行的最大值,确定这个anchor属于哪个boxes
-
-
   gt_argmax_overlaps = overlaps.argmax(axis=0)#得到最大值的序号,按列方向搜索，[gt]
   gt_max_overlaps = overlaps[gt_argmax_overlaps,
                              np.arange(overlaps.shape[1])]#得到最大值的值，每列的最大值，哪个anchor [gt],确定是哪个anchor
-
   gt_argmax_overlaps = np.where(overlaps == gt_max_overlaps)[0]#得到最大值的序号（行号）,满足overlap中等于gt_max_overlaps
-
 
   if not cfg.TRAIN.RPN_CLOBBER_POSITIVES:
     # assign bg labels first so that positive labels can clobber them
@@ -103,13 +98,11 @@ def anchor_target_layer(rpn_cls_score, gt_boxes, im_info, _feat_stride, all_anch
     disable_inds = npr.choice(
       bg_inds, size=(len(bg_inds) - num_bg), replace=False)
     labels[disable_inds] = -1# 多余的背景转为不感兴趣
-
   # 留下RPN_BATCHSIZE个标签
-
   bbox_targets = np.zeros((len(inds_inside), 4), dtype=np.float32)
   # 计算筛选后的anchor和有最大IoU的gt的bounding box regression
-  bbox_targets = _compute_targets(anchors, gt_boxes[argmax_overlaps, :])
 
+  bbox_targets = _compute_targets(anchors, gt_boxes[argmax_overlaps, :])
   bbox_inside_weights = np.zeros((len(inds_inside), 4), dtype=np.float32)
   # only the positive ones have regression targets [1.0, 1.0, 1.0, 1.0] ,
   bbox_inside_weights[labels == 1, :] = np.array(cfg.TRAIN.RPN_BBOX_INSIDE_WEIGHTS)

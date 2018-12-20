@@ -75,7 +75,6 @@ def resnet101(pretrained=False):
   Args:
     pretrained (bool): If True, returns a model pre-trained on ImageNet
   """
-#  print("_________________________model = ResNet(Bottleneck, [3, 4, 23, 3])________________________________")
   model = ResNet(Bottleneck, [3, 4, 23, 3])
   if pretrained:
     model.load_state_dict(model_zoo.load_url(model_urls['resnet101']))
@@ -122,7 +121,6 @@ class resnetv1(Network):
       self.resnet = resnet50()
 
     elif self._num_layers == 101:
-#      print("_________________________self.resnet = resnet101()________________________________")
       self.resnet = resnet101()#初始化resnet属性
 
     elif self._num_layers == 152:
@@ -159,7 +157,6 @@ class resnetv1(Network):
   def train(self, mode=True):
     # Override train so that the training mode is set as we want
     nn.Module.train(self, mode)
-#    print("_________________________nn.Module.train(self, mode)_________________________________")
 
 
     if mode:

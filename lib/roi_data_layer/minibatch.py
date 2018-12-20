@@ -29,7 +29,7 @@ def get_minibatch(roidb, num_classes):
     format(num_images, cfg.TRAIN.BATCH_SIZE)
 
 ###改
-######################################################################################################################################################
+#######################################################################################################################
   if cfg.TRAIN.IMS_PER_BATCH == 1 :
     """
     一次处理一张图片
@@ -79,6 +79,7 @@ def get_minibatch(roidb, num_classes):
       # Include all ground truth boxes
       gt_inds1 = np.where(roidb[0]['gt_classes'] != 0)[0]
       gt_inds2 = np.where(roidb[1]['gt_classes'] != 0)[0]
+
     else:
       # For the COCO ground truth boxes, exclude the ones that are ''iscrowd''
       gt_inds1 = np.where(roidb[0]['gt_classes'] != 0 & np.all(roidb[0]['gt_overlaps'].toarray() > -1.0, axis=1))[0]
@@ -146,8 +147,10 @@ def _get_2_image_blob(roidb, scale_inds):
   scales.
   """
   num_images = len(roidb)
+
   processed_ims = []
   im_scales = []
+
   for i in range(num_images):
     im = cv2.imread(roidb[i]['image'])
     if roidb[i]['flipped']:
@@ -175,7 +178,6 @@ def _get_2_image_blob(roidb, scale_inds):
   #mixup
   im = lam * im1 + (1 - lam) * im2
   processed_ims = [im]
-
   # Create a blob to hold the input images
   blob = im_list_to_blob(processed_ims)
 
