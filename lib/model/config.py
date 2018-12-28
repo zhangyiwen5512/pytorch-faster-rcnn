@@ -40,7 +40,9 @@ __C.loss_strategy = 'RCNN_ONLY'
 #__C.loss_strategy = 'RCNN+RPN'
 #__C.loss_strategy = 'NOCHANGE'
 
-__C.RCNN_MIX = True
+#mix in layer[4] 0 = close 1,2,3=mix location
+__C.MIX_LOCATION = 1
+__C.layer4 = False
 
 
 __C.TRAIN = edict()
@@ -323,7 +325,7 @@ def get_output_dir(imdb, weights_filename):
   outdir = osp.abspath(osp.join(__C.ROOT_DIR, 'output', __C.EXP_DIR, imdb.name))
   if weights_filename is None:
     if __C.loss_strategy == 'NOCHANGE':
-      weights_filename = 'default'
+      weights_filename = 'NOCHANGE'
     elif  __C.loss_strategy == 'RCNN+RPN':
       weights_filename = 'RCNN+RPN'
     elif  __C.loss_strategy == 'RCNN_ONLY':
@@ -346,7 +348,7 @@ def get_output_tb_dir(imdb, weights_filename):
   outdir = osp.abspath(osp.join(__C.ROOT_DIR, 'tensorboard', __C.EXP_DIR, imdb.name))
   if weights_filename is None:
     if __C.loss_strategy == 'NOCHANGE':
-      weights_filename = 'default'
+      weights_filename = 'NOCHANGE'
     elif  __C.loss_strategy == 'RCNN+RPN':
       weights_filename = 'RCNN+RPN'
     elif  __C.loss_strategy == 'RCNN_ONLY':

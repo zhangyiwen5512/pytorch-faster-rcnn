@@ -122,7 +122,9 @@ class Network(nn.Module):
     # pre_pool_size=7
     pre_pool_size = cfg.POOLING_SIZE * 2 if max_pool else cfg.POOLING_SIZE
     #[256,1024,7,7]  将h×w的roi划分为h/H和w/W的网格，再池化roi到对应网格
+###########################################################################################################
     crops = CropAndResizeFunction(pre_pool_size, pre_pool_size)(bottom, torch.cat([y1/(height-1),x1/(width-1),y2/(height-1),x2/(width-1)], 1), rois[:, 0].int())
+##############################################################################################################
     if max_pool:
       crops = F.max_pool2d(crops, 2, 2)
 
@@ -478,6 +480,8 @@ class Network(nn.Module):
     # This is just _build_network in tf-faster-rcnn
     torch.backends.cudnn.benchmark = False
     net_conv = self._image_to_head()
+
+
     # build the anchors for the image 特征图net_conv.size(2)height  net_conv.size(3)weight
     #一张图片得到9×K个anchor feature size=(width/stride)*(height/stride) == K
     self._anchor_component(net_conv.size(2), net_conv.size(3))
@@ -485,13 +489,14 @@ class Network(nn.Module):
     #--------------------------------RPN---------------------------------------------------------------------
     #得到roi[256, 5][class,x1,y1,x2,y2]
     rois = self._region_proposal(net_conv)
+
     #--------------------------------POLING---------------------------------------------------------------------
-    if cfg.loss_strategy == 'RPN_ONLY':##########
+    if cfg.loss_strategy == 'RPN_ONLY' and cfg.test == False:##########
       for k in self._predictions.keys():
         self._score_summaries[k] = self._predictions[k]
-      return rois, None, None
+      return rois, None, None #####################################test error NONE
 
-
+    # 映射
     if cfg.POOLING_MODE == 'crop':#[256,1024,7,7]
       pool5 = self._crop_pool_layer(net_conv, rois)
     else:
@@ -508,6 +513,8 @@ class Network(nn.Module):
     if self._mode == 'TRAIN':
       torch.backends.cudnn.benchmark = True # benchmark because now the input size are fixed
     # [256,2048]
+
+    # mixup in layer4
     fc7 = self._head_to_tail(pool5)
     #--------------------------------softmax,bouding box --------------------------------------------------------------------
     cls_prob, bbox_pred = self._region_classification(fc7)
@@ -619,7 +626,7 @@ class Network(nn.Module):
                                                                         self._losses['cross_entropy'].item(), \
                                                                         self._losses['loss_box'].item(), \
                                                                         self._losses['total_loss'].item()
-    if cfg.loss_strategy == 'NOCHANGE' or cfg.loss_strategy == 'RCNN+RPN':
+    if cfg.loss_strategy == 'RPN_ONLY':
       rpn_loss_cls, rpn_loss_box, loss_cls, loss_box, loss = self._losses["rpn_cross_entropy"].item(), \
                                                                         self._losses['rpn_loss_box'].item(), \
                                                                         -1, -1,\
@@ -653,7 +660,7 @@ class Network(nn.Module):
                                                                         self._losses['cross_entropy'].item(), \
                                                                         self._losses['loss_box'].item(), \
                                                                         self._losses['total_loss'].item()
-    if cfg.loss_strategy == 'NOCHANGE' or cfg.loss_strategy == 'RCNN+RPN':
+    if cfg.loss_strategy == 'RPN_ONLY':
       rpn_loss_cls, rpn_loss_box, loss_cls, loss_box, loss = self._losses["rpn_cross_entropy"].item(), \
                                                                         self._losses['rpn_loss_box'].item(), \
                                                                         -1, -1,\

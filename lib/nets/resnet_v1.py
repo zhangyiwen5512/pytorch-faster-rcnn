@@ -9,6 +9,7 @@ from __future__ import print_function
 
 from nets.network import Network
 from model.config import cfg
+import numpy as np
 
 import utils.timer
 
@@ -19,10 +20,10 @@ from torch.autograd import Variable
 import math
 import torch.utils.model_zoo as model_zoo
 
-import torchvision
-from torchvision.models.resnet import BasicBlock, Bottleneck
+import nets.ResNet
+from nets.ResNet import BasicBlock, Bottleneck
 
-class ResNet(torchvision.models.resnet.ResNet):
+class ResNet(nets.ResNet.ResNet):
   def __init__(self, block, layers, num_classes=1000):
     self.inplanes = 64
     super(ResNet, self).__init__(block, layers, num_classes)#初始化真正的res101
@@ -112,7 +113,10 @@ class resnetv1(Network):
     return net_conv
 
   def _head_to_tail(self, pool5):
+    if cfg.MIX_LOCATION != 0:
+      cfg.layer4 = True
     fc7 = self.resnet.layer4(pool5).mean(3).mean(2) # average pooling after layer4
+    cfg.layer4 = False
     return fc7
 
   def _init_head_tail(self):
@@ -147,12 +151,12 @@ class resnetv1(Network):
         for p in m.parameters(): p.requires_grad=False
 
     self.resnet.apply(set_bn_fix)
-
+##############################################################################################################
     # Build resnet.
     self._layers['head'] = nn.Sequential(self.resnet.conv1, self.resnet.bn1,self.resnet.relu, 
       self.resnet.maxpool,self.resnet.layer1,self.resnet.layer2,self.resnet.layer3)
 
-####
+##############################################################################################################
 
   def train(self, mode=True):
     # Override train so that the training mode is set as we want

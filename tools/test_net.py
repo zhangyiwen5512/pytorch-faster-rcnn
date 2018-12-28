@@ -78,7 +78,18 @@ if __name__ == '__main__':
     filename = os.path.splitext(os.path.basename(args.weight))[0]
 
   tag = args.tag
-  tag = tag if tag else 'default'
+  if tag:
+    tag = tag
+  else:
+    tag = 'default'
+    if cfg.loss_strategy == 'NOCHANGE':
+      tag = 'NOCHANGE'
+    elif  cfg.loss_strategy == 'RCNN+RPN':
+      tag = 'RCNN+RPN'
+    elif  cfg.loss_strategy == 'RCNN_ONLY':
+      tag = 'RCNN_ONLY'
+    elif cfg.loss_strategy == 'RPN_ONLY':
+      tag = 'RPN_ONLY'
   filename = tag + '/' + filename
 
   imdb = get_imdb(args.imdb_name)
@@ -108,7 +119,22 @@ if __name__ == '__main__':
     net._device = 'cpu'
   net.to(net._device)
 
+
+
+
   if args.model:
+    model = ''
+    for m in args.model.split('/'):
+      if cfg.loss_strategy == 'NOCHANGE' and m == 'default':
+        m = 'NOCHANGE'
+      elif  cfg.loss_strategy == 'RCNN+RPN' and m == 'default':
+        m = 'RCNN+RPN'
+      elif  cfg.loss_strategy == 'RCNN_ONLY' and m == 'default':
+        m = 'RCNN_ONLY'
+      elif cfg.loss_strategy == 'RPN_ONLY' and m == 'default':
+        m = 'RPN_ONLY'
+      model += '/' + m
+    args.model = '.' + model
     print(('Loading model check point from {:s}').format(args.model))
     net.load_state_dict(torch.load(args.model, map_location=lambda storage, loc: storage))
     print('Loaded.')
@@ -116,4 +142,7 @@ if __name__ == '__main__':
     print(('Loading initial weights from {:s}').format(args.weight))
     print('Loaded.')
 
+  #打开test开关
+  cfg.test = True
   test_net(net, imdb, filename, max_per_image=args.max_per_image)
+  cfg.test = False
