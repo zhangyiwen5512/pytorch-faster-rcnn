@@ -288,6 +288,7 @@ class SolverWrapper(object):
 
         print('speed: {:.3f}s / iter'.format(utils.timer.timer.average_time()))
 
+        #torch.cuda.empty_cache()
         # for k in utils.timer.timer._average_time.keys():
         #   print(k, utils.timer.timer.average_time(k))
 

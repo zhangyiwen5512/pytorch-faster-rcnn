@@ -19,6 +19,7 @@ import torch.nn.functional as F
 from torch.autograd import Variable
 import math
 import torch.utils.model_zoo as model_zoo
+from torch.utils.checkpoint import checkpoint_sequential
 
 import nets.ResNet
 from nets.ResNet import BasicBlock, Bottleneck
@@ -115,7 +116,10 @@ class resnetv1(Network):
   def _head_to_tail(self, pool5):
     if cfg.MIX_LOCATION != 0:
       cfg.layer4 = True
-    fc7 = self.resnet.layer4(pool5).mean(3).mean(2) # average pooling after layer4
+    num_segments = 3
+    fc7 = checkpoint_sequential(self.resnet.layer4, num_segments, pool5)
+    fc7 = fc7.mean(3).mean(2)
+#    fc7 = self.resnet.layer4(pool5).mean(3).mean(2) # average pooling after layer4
     cfg.layer4 = False
     return fc7
 
