@@ -16,7 +16,7 @@ import torch.nn.functional as F
 from torch.autograd import Variable
 import math
 #import torchvision.models as models
-import net.VGG16 as models
+import nets.VGG16 as models
 
 class vgg16(Network):
   def __init__(self):
@@ -49,6 +49,7 @@ class vgg16(Network):
     if cfg.MIX_LOCATION != 0:
       cfg.layer4 = True
     fc7 = self.vgg.classifier(pool5_flat)
+    cfg.layer4 = False
 
     return fc7
 

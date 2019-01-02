@@ -38,11 +38,11 @@ __C.lamda = genLamda()
 # loss strategy 1 old,  2 new,sperate train
 #__C.loss_strategy = 'RCNN_ONLY'
 #__C.loss_strategy = 'RPN_ONLY'
-__C.loss_strategy = 'RCNN+RPN'
-#__C.loss_strategy = 'NOCHANGE'
+#__C.loss_strategy = 'RCNN+RPN'
+__C.loss_strategy = 'NOCHANGE'
 
 #mix in layer[4] 0 = close 1,2,3=mix location
-__C.MIX_LOCATION = 2
+__C.MIX_LOCATION = 0
 __C.layer4 = False
 
 
@@ -96,8 +96,8 @@ __C.TRAIN.SCALES = (600,)
 __C.TRAIN.MAX_SIZE = 1000
 
 # Images to use per minibatch
-__C.TRAIN.IMS_PER_BATCH = 2
-#__C.TRAIN.IMS_PER_BATCH = 1
+#__C.TRAIN.IMS_PER_BATCH = 2
+__C.TRAIN.IMS_PER_BATCH = 1
 
 # Minibatch size (number of regions of interest [ROIs])
 __C.TRAIN.BATCH_SIZE = 128
