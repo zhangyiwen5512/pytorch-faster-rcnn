@@ -42,7 +42,7 @@ __C.loss_strategy = 'RCNN+RPN'
 #__C.loss_strategy = 'NOCHANGE'
 
 #mix in layer[4] 0 = close 1,2,3=mix location
-__C.MIX_LOCATION = 2
+__C.MIX_LOCATION = 0
 __C.layer4 = False
 
 
