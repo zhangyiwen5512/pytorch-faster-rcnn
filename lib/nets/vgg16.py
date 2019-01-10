@@ -17,6 +17,7 @@ from torch.autograd import Variable
 import math
 #import torchvision.models as models
 import nets.VGG16 as models
+import numpy as np
 
 class vgg16(Network):
   def __init__(self):
@@ -45,12 +46,35 @@ class vgg16(Network):
     return net_conv
 
   def _head_to_tail(self, pool5):
+    lam = cfg.lamda
     pool5_flat = pool5.view(pool5.size(0), -1)
     if cfg.MIX_LOCATION != 0:
       cfg.layer4 = True
-    fc7 = self.vgg.classifier(pool5_flat)
-    cfg.layer4 = False
+#    fc7 = self.vgg.classifier(pool5_flat)
 
+    classifier = self.vgg.classifier._modules
+
+    x = classifier['0'](pool5_flat)# linear1
+    x = classifier['1'](x)# relu1
+    x = classifier['2'](x)# dropout1
+    if cfg.MIX_LOCATION == 1 and cfg.layer4 == True:
+      rcnn_index = np.arange(x.size()[0])
+      np.random.shuffle(rcnn_index)
+      self.rcnn_mix_index = rcnn_index
+      x = lam * x + (1 - lam) * x[rcnn_index, :]
+
+    x = classifier['3'](x)# linear2
+    x = classifier['4'](x)# relu2
+    x = classifier['5'](x)# dropout2
+    if cfg.MIX_LOCATION == 2 and cfg.layer4 == True:
+      rcnn_index = np.arange(x.size()[0])
+      np.random.shuffle(rcnn_index)
+      self.rcnn_mix_index = rcnn_index
+      x = lam * x + (1 - lam) * x[rcnn_index, :]
+
+
+    cfg.layer4 = False
+    fc7 = x
     return fc7
 
   def load_pretrained_cnn(self, state_dict):

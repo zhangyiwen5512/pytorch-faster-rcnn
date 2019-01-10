@@ -1,7 +1,7 @@
 import torch.nn as nn
 import torch.utils.model_zoo as model_zoo
 import math
-
+import numpy as np
 
 __all__ = [
     'VGG', 'vgg11', 'vgg11_bn', 'vgg13', 'vgg13_bn', 'vgg16', 'vgg16_bn',
@@ -26,28 +26,6 @@ class VGG(nn.Module):
     def __init__(self, features, num_classes=1000, init_weights=True):
         super(VGG, self).__init__()
         self.features = features
-        """
-        self.Linear1 = nn.Linear(512 * 7 * 7, 4096)
-        self.ReLU1 = nn.ReLU(True)
-        self.Dropout1 = nn.Dropout()
-        
-        self.Linear2 = nn.Linear(4096, 4096)
-        self.ReLU2 = nn.ReLU(True)
-        self.Dropout2 = nn.Dropout()
-        
-        self.Linear3 = nn.Linear(4096, num_classes)
-        
-        self.classifier = nn.Sequential(
-            self.Linear1,
-            self.ReLU1,
-            self.Dropout1,
-            self.Linear2,
-            self.ReLU2,
-            self.Dropout2,
-            self.Linear3,
-        )
-        """
-#       """
         self.classifier = nn.Sequential(
             nn.Linear(512 * 7 * 7, 4096),
             nn.ReLU(True),
@@ -57,7 +35,7 @@ class VGG(nn.Module):
             nn.Dropout(),
             nn.Linear(4096, num_classes),
         )
-#        """
+
 
         if init_weights:
             self._initialize_weights()
@@ -70,16 +48,35 @@ class VGG(nn.Module):
 ##############################
 #        x = self.classifier(x)
 ###############################
+        lam = cfg.lamda
+        print(lam)
         x = self.classifier.children()[0](x)# linear1
         x = self.classifier.children()[1](x)# relu1
         x = self.classifier.children()[2](x)# dropout1
+        if cfg.MIX_LOCATION == 1 and cfg.layer4 == True:
+          print('loc1')
+          rcnn_index = np.arange(x.size()[0])
+          np.random.shuffle(rcnn_index)
+          self.rcnn_mix_index = rcnn_index
+          x = lam * x + (1 - lam) * x[rcnn_index, :]
 
         x = self.classifier.children()[3](x)# linear2
         x = self.classifier.children()[4](x)# relu2
         x = self.classifier.children()[5](x)# dropout2
+        if cfg.MIX_LOCATION == 2 and cfg.layer4 == True:
+          print('loc2')
+          rcnn_index = np.arange(x.size()[0])
+          np.random.shuffle(rcnn_index)
+          self.rcnn_mix_index = rcnn_index
+          x = lam * x + (1 - lam) * x[rcnn_index, :]
 
         x = self.classifier.children()[6](x)# linear3
-
+        if cfg.MIX_LOCATION == 3 and cfg.layer4 == True:
+          print('loc2')
+          rcnn_index = np.arange(x.size()[0])
+          np.random.shuffle(rcnn_index)
+          self.rcnn_mix_index = rcnn_index
+          x = lam * x + (1 - lam) * x[rcnn_index, :]
 
         ######
         return x
