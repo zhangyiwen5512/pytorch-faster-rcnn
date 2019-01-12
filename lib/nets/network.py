@@ -603,7 +603,10 @@ class Network(nn.Module):
 
   def get_summary(self, blobs):
     self.eval()
-    self.forward(blobs['data'], blobs['im_info'], blobs['gt_boxes'], blobs['gt_boxes2'])
+    if cfg.TRAIN.IMS_PER_BATCH == 1:
+      self.forward(blobs['data'], blobs['im_info'], blobs['gt_boxes'], None)
+    if cfg.TRAIN.IMS_PER_BATCH == 2:
+      self.forward(blobs['data'], blobs['im_info'], blobs['gt_boxes'], blobs['gt_boxes2'])
     self.train()
     summary = self._run_summary_op(True)
 

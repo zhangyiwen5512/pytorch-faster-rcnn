@@ -90,6 +90,8 @@ if __name__ == '__main__':
       tag = 'RCNN_ONLY'
     elif cfg.loss_strategy == 'RPN_ONLY':
       tag = 'RPN_ONLY'
+    else:
+      pass
   filename = tag + '/' + filename
 
   imdb = get_imdb(args.imdb_name)
