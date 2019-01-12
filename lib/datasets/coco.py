@@ -19,6 +19,8 @@ import scipy.io as sio
 import pickle
 import json
 import uuid
+import time
+
 # COCO API
 from pycocotools.coco import COCO
 from pycocotools.cocoeval import COCOeval
@@ -240,6 +242,7 @@ class coco(imdb):
       print('{:.1f}'.format(100 * ap))
 
     print('~~~~ Summary metrics ~~~~')
+    print time.strftime('%Y.%m.%d', time.localtime(time.time()))
     coco_eval.summarize()
 
   def _do_detection_eval(self, res_file, output_dir):

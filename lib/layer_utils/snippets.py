@@ -31,7 +31,6 @@ def generate_anchors_pre(height, width, feat_stride, anchor_scales=(8,16,32), an
   # width changes faster, so here it is H, W, C
   # transpose做轴对换0轴和1轴对换
   # ---------------A=9 K=W*H----------------------------------
-  #print("________________________________________________________",A,K,width,height,width*height)
   #[1,9,4]+[k,1,4]=[k,A,4]
   #一个anchor生成4K个坐标，共扫图k次
   anchors = anchors.reshape((1, A, 4)) + shifts.reshape((1, K, 4)).transpose((1, 0, 2))
