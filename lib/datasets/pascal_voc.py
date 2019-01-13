@@ -18,6 +18,7 @@ import scipy.io as sio
 import pickle
 import subprocess
 import uuid
+import time
 from .voc_eval import voc_eval
 from model.config import cfg
 
@@ -248,7 +249,7 @@ class pascal_voc(imdb):
       with open(os.path.join(output_dir, cls + '_pr.pkl'), 'wb') as f:
         pickle.dump({'rec': rec, 'prec': prec, 'ap': ap}, f)
     print(('Mean AP = {:.4f}'.format(np.mean(aps))))
-    print time.strftime('End Time: %Y.%m.%d %H:%M:%S', time.localtime(time.time()))
+    print(time.strftime('End Time: %Y.%m.%d %H:%M:%S', time.localtime(time.time())))
     print('~~~~~~~~')
     print('Results:')
     for ap in aps:

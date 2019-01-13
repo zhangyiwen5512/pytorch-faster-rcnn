@@ -42,7 +42,7 @@ __C.loss_strategy = 'RCNN_ONLY'
 #__C.loss_strategy = 'NOCHANGE'
 
 #mix in layer[4] 0 = close 1,2,3=mix location    vgg16 dont have loc3
-__C.MIX_LOCATION = 2
+__C.MIX_LOCATION = 1
 __C.layer4 = False
 
 

@@ -55,7 +55,7 @@ class Network(nn.Module):
     # add back mean
     image = self._image_gt_summaries['image'] + cfg.PIXEL_MEANS
     image = imresize(image[0], self._im_info[:2] / self._im_info[2])
-    # BGR to RGB (opencv uses BGR)############################################################################
+    # BGR to RGB (opencv uses BGR)
     self._gt_image = image[np.newaxis, :,:,::-1].copy(order='C')
 
   def _add_gt_image_summary(self):
@@ -63,8 +63,7 @@ class Network(nn.Module):
     self._add_gt_image()
     image = draw_bounding_boxes(\
                       self._gt_image, self._image_gt_summaries['gt_boxes'], self._image_gt_summaries['im_info'])
-#############################################################################################################################################
-#    print(image[0].astype('float64'))
+
     return tb.summary.image('GROUND_TRUTH', image[0].astype('float64')/255.0)
 
   def _add_act_summary(self, key, tensor):
@@ -122,9 +121,7 @@ class Network(nn.Module):
     # pre_pool_size=7
     pre_pool_size = cfg.POOLING_SIZE * 2 if max_pool else cfg.POOLING_SIZE
     #[256,1024,7,7]  将h×w的roi划分为h/H和w/W的网格，再池化roi到对应网格
-###########################################################################################################
     crops = CropAndResizeFunction(pre_pool_size, pre_pool_size)(bottom, torch.cat([y1/(height-1),x1/(width-1),y2/(height-1),x2/(width-1)], 1), rois[:, 0].int())
-##############################################################################################################
     if max_pool:
       crops = F.max_pool2d(crops, 2, 2)
 
@@ -145,14 +142,12 @@ class Network(nn.Module):
     self._anchor_targets['rpn_bbox_targets'] = rpn_bbox_targets
     self._anchor_targets['rpn_bbox_inside_weights'] = rpn_bbox_inside_weights
     self._anchor_targets['rpn_bbox_outside_weights'] = rpn_bbox_outside_weights
-##############################################################################################################
+
     if cfg.TRAIN.IMS_PER_BATCH == 2 :
- ###################################################################   ??????
       rpn_labels2, rpn_bbox_targets2, rpn_bbox_inside_weights2, rpn_bbox_outside_weights2 = \
       anchor_target_layer(
       rpn_cls_score.data, self._gt_boxes2.data.cpu().numpy(), self._im_info, self._feat_stride, self._anchors.data.cpu().numpy(), self._num_anchors)
       ##[1,1,A * height,width]标签 [1,height,width ,9*4]回归 [1,height,width ,9*4] [1,height,width ,9*4] 转化为numpy
-#########################################################################???????????
 
       rpn_labels2 = torch.from_numpy(rpn_labels2).float().to(self._device) #.set_shape([1, 1, None, None])
       rpn_bbox_targets2 = torch.from_numpy(rpn_bbox_targets2).float().to(self._device)#.set_shape([1, None, None, self._num_anchors * 4])
@@ -165,7 +160,6 @@ class Network(nn.Module):
       self._anchor_targets['rpn_bbox_inside_weights2'] = rpn_bbox_inside_weights2
       self._anchor_targets['rpn_bbox_outside_weights2'] = rpn_bbox_outside_weights2
 
-##############################################################################################################
     for k in self._anchor_targets.keys():
       self._score_summaries[k] = self._anchor_targets[k]
 
@@ -219,7 +213,6 @@ class Network(nn.Module):
     loss_box = loss_box.mean()
     return loss_box
 
-################################################################################################################loss计算
   def _add_losses(self, sigma_rpn=3.0):
     if  cfg.TRAIN.IMS_PER_BATCH == 1:
       # RPN, class loss
@@ -397,8 +390,9 @@ class Network(nn.Module):
     cls_score = self.cls_score_net(fc7)
     cls_pred = torch.max(cls_score, 1)[1]
     cls_prob = F.softmax(cls_score, dim=1)
+########################################################################################################################
     bbox_pred = self.bbox_pred_net(fc7)
-
+########################################################################################################################
     self._predictions["cls_score"] = cls_score
     self._predictions["cls_pred"] = cls_pred
     self._predictions["cls_prob"] = cls_prob
@@ -432,7 +426,6 @@ class Network(nn.Module):
 
   def _init_modules(self):
     self._init_head_tail()#c初始化惹101和vgg16网络
-####################################################################################################################################################
     # rpn
     self.rpn_net = nn.Conv2d(self._net_conv_channels, cfg.RPN_CHANNELS, [3, 3], padding=1)
 
@@ -442,8 +435,10 @@ class Network(nn.Module):
     #softmax
     self.cls_score_net = nn.Linear(self._fc7_channels, self._num_classes)
     #bounding box
+    #Grid RCNN
+########################################################################################################################
     self.bbox_pred_net = nn.Linear(self._fc7_channels, self._num_classes * 4)
-#####################################################################################################################################################
+########################################################################################################################
     self.init_weights()
 
   def _run_summary_op(self, val=False):
@@ -452,7 +447,6 @@ class Network(nn.Module):
     """
     summaries = []
     # Add image gt
-    ######################################################################################################
     summaries.append(self._add_gt_image_summary())
     # Add event_summaries
     for key, var in self._event_summaries.items():
@@ -491,7 +485,7 @@ class Network(nn.Module):
     rois = self._region_proposal(net_conv)
 
     #--------------------------------POLING---------------------------------------------------------------------
-    if cfg.loss_strategy == 'RPN_ONLY' and cfg.test == False:##########
+    if cfg.loss_strategy == 'RPN_ONLY' and cfg.test == False:
       for k in self._predictions.keys():
         self._score_summaries[k] = self._predictions[k]
       return rois, None, None #####################################test error NONE
@@ -540,10 +534,8 @@ class Network(nn.Module):
     self._image = torch.from_numpy(image.transpose([0,3,1,2])).to(self._device)# 通道换位置
     self._im_info = im_info # No need to change; actually it can be an list
     self._gt_boxes = torch.from_numpy(gt_boxes).to(self._device) if gt_boxes is not None else None
-######################################################################################################################
     if cfg.TRAIN.IMS_PER_BATCH == 2 :
       self._gt_boxes2 = torch.from_numpy(gt_boxes2).to(self._device) if gt_boxes2 is not None else None
-######################################################################################################################
 
     self._mode = mode
     #得到roi[256, 5][class,x1,y1,x2,y2]
