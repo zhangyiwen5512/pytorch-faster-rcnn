@@ -50,6 +50,7 @@ class vgg16(Network):
     pool5_flat = pool5.view(pool5.size(0), -1)
     if cfg.MIX_LOCATION != 0:
       cfg.layer4 = True
+
 #    fc7 = self.vgg.classifier(pool5_flat)
 
     classifier = self.vgg.classifier._modules

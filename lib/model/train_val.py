@@ -241,7 +241,6 @@ class SolverWrapper(object):
 
     self.net.train()
     self.net.to(self.net._device)#数据传入设备
-###################################正式训练开始###################################################################
     while iter < max_iters + 1:
       # Learning rate
       if iter == next_stepsize + 1:
@@ -253,19 +252,15 @@ class SolverWrapper(object):
 
       utils.timer.timer.tic()
       # Get training data, one batch at a time ,这里做图片读取修改
-#########################################################
       blobs = self.data_layer.forward()#转到layer.forward
 
-#########################################################
 
       now = time.time()
       if iter == 1 or now - last_summary_time > cfg.TRAIN.SUMMARY_INTERVAL:
         # Compute the graph with summary
-#############################################################################################
         # 计算loss，反向传播 rpn_loss 仅在分开训练时使用
         rpn_loss_cls, rpn_loss_box, loss_cls, loss_box, total_loss, summary = \
           self.net.train_step_with_summary(blobs, self.optimizer)
-#############################################################################################
         for _sum in summary: self.writer.add_summary(_sum, float(iter))
         # Also check the summary on the validation set
         blobs_val = self.data_layer_val.forward()
@@ -273,11 +268,9 @@ class SolverWrapper(object):
         for _sum in summary_val: self.valwriter.add_summary(_sum, float(iter))
         last_summary_time = now
       else:
-#############################################################################################
         # Compute the graph without summary  rpn_loss 仅在分开训练时使用
         rpn_loss_cls, rpn_loss_box, loss_cls, loss_box, total_loss = \
           self.net.train_step(blobs, self.optimizer)
-#############################################################################################
       utils.timer.timer.toc()
 
       # Display training information

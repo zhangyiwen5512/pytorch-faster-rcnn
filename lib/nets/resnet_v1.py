@@ -116,7 +116,7 @@ class resnetv1(Network):
   def _head_to_tail(self, pool5):
     if cfg.MIX_LOCATION != 0:
       cfg.layer4 = True
-    num_segments = 3
+    num_segments = 2
     fc7 = checkpoint_sequential(self.resnet.layer4, num_segments, pool5)
     fc7 = fc7.mean(3).mean(2)
 #    fc7 = self.resnet.layer4(pool5).mean(3).mean(2) # average pooling after layer4
