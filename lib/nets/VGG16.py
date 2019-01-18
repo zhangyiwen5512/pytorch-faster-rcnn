@@ -46,7 +46,7 @@ class VGG(nn.Module):
 
 
 ##############################
-        x = self.classifier(x)
+#       x = self.classifier(x)
 ###############################
 
         lam = cfg.lamda

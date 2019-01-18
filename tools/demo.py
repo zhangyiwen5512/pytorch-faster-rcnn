@@ -292,7 +292,7 @@ if __name__ == '__main__':
         for category, scene_list in datasets.items():
            for scene in scene_list:
                print("demo in:" + category + '/' + scene)
-               print(time.strftime('End Time: %Y.%m.%d %H:%M:%S', time.localtime(time.time())))
+               print(time.strftime('Start Time: %Y.%m.%d %H:%M:%S', time.localtime(time.time())))
                CDnet(net, category + '/' + scene)
 
 
