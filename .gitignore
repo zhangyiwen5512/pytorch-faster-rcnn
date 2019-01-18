@@ -13,3 +13,4 @@ lib/pycocotools/_mask.so
 *.tgz
 *.png
 *.pkl
+*.swp
