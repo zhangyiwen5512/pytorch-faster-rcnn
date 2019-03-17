@@ -272,7 +272,7 @@ class Network(nn.Module):
 
       rpn_loss_box2 = self._smooth_l1_loss(rpn_bbox_pred, rpn_bbox_targets2, rpn_bbox_inside_weights2,
                                           rpn_bbox_outside_weights2, sigma=sigma_rpn, dim=[1, 2, 3])
-##############################################3
+#######################################################################################################################################
       lam = cfg.lamda
       rpn_cross_entropy = lam * rpn_cross_entropy1 + (1 - lam) * rpn_cross_entropy2
       rpn_loss_box = lam * rpn_loss_box1 + (1 - lam) * rpn_loss_box2
@@ -296,6 +296,7 @@ class Network(nn.Module):
       loss_box = self._smooth_l1_loss(bbox_pred, bbox_targets, bbox_inside_weights, bbox_outside_weights)
 
     if cfg.loss_strategy == 'RCNN_ONLY' or cfg.loss_strategy == 'RCNN+RPN':
+####################################################################################################################################
       lam = cfg.lamda
       label2 = self._proposal_targets['labels'][self.rcnn_mix_index, :].view(-1)
       cross_entropy2 = F.cross_entropy(cls_score.view(-1, self._num_classes), label2)
@@ -330,7 +331,6 @@ class Network(nn.Module):
     else:
       raise Exception("check cfg.TRAIN.loss_strategy in /lib/model/config.py or experiments/cfgs/*.yml")
 
-##################################################################################################################
     self._losses['total_loss'] = loss
 
     for k in self._losses.keys():
@@ -390,9 +390,7 @@ class Network(nn.Module):
     cls_score = self.cls_score_net(fc7)
     cls_pred = torch.max(cls_score, 1)[1]
     cls_prob = F.softmax(cls_score, dim=1)
-########################################################################################################################
     bbox_pred = self.bbox_pred_net(fc7)
-########################################################################################################################
     self._predictions["cls_score"] = cls_score
     self._predictions["cls_pred"] = cls_pred
     self._predictions["cls_prob"] = cls_prob
@@ -436,9 +434,7 @@ class Network(nn.Module):
     self.cls_score_net = nn.Linear(self._fc7_channels, self._num_classes)
     #bounding box
     #Grid RCNN
-########################################################################################################################
     self.bbox_pred_net = nn.Linear(self._fc7_channels, self._num_classes * 4)
-########################################################################################################################
     self.init_weights()
 
   def _run_summary_op(self, val=False):
@@ -472,8 +468,12 @@ class Network(nn.Module):
 
   def _predict(self):
     # This is just _build_network in tf-faster-rcnn
+    rcnn_index = np.arange(cfg.TRAIN.BATCH_SIZE)
+    np.random.shuffle(rcnn_index)
+    self.rcnn_mix_index = rcnn_index
+
     torch.backends.cudnn.benchmark = False
-    net_conv = self._image_to_head()
+    net_conv = self._image_to_head(self.rcnn_mix_index)
 
 
     # build the anchors for the image 特征图net_conv.size(2)height  net_conv.size(3)weight
@@ -496,20 +496,22 @@ class Network(nn.Module):
     else:
       pool5 = self._roi_pool_layer(net_conv, rois)
 
-    if cfg.loss_strategy == 'RCNN_ONLY' or cfg.loss_strategy == 'RCNN+RPN':
-#      pool5 = pool5.detach()
-      lam = cfg.lamda
-      rcnn_index = np.arange(pool5.size()[0])
-      np.random.shuffle(rcnn_index)
-      self.rcnn_mix_index = rcnn_index
-      pool5 = lam * pool5 + (1 - lam) * pool5[rcnn_index, :]
+    #if cfg.loss_strategy == 'RCNN_ONLY' or cfg.loss_strategy == 'RCNN+RPN':
+      #pool5 = pool5.detach()
+      # lam = cfg.lamda
+########################################################################################################################
+      #pool5 = lam * pool5 + (1 - lam) * pool5[rcnn_index, :]
+      if cfg.MIX_LOCATION == 0:
+        pool5, _ = self.dropblock.forward(pool5, rcnn_index)
+########################################################################################################################
 
     if self._mode == 'TRAIN':
       torch.backends.cudnn.benchmark = True # benchmark because now the input size are fixed
     # [256,2048]
 
     # mixup in layer4
-    fc7 = self._head_to_tail(pool5)
+    fc7 = self._head_to_tail(pool5, self.rcnn_mix_index)
+
     #--------------------------------softmax,bouding box --------------------------------------------------------------------
     cls_prob, bbox_pred = self._region_classification(fc7)
     

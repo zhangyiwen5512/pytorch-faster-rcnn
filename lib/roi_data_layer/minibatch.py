@@ -175,8 +175,10 @@ def _get_2_image_blob(roidb, scale_inds):
 
   assert im1.shape == im2.shape,"im1.shape:{}   im2.shape:{}   scale:{}".format(im1.shape, im2.shape, scale)
 
-  #mixup
+  #mixup + dropblock
+#######################################################################################################################
   im = lam * im1 + (1 - lam) * im2
+###########################################################################################################################
   processed_ims = [im]
   # Create a blob to hold the input images
   blob = im_list_to_blob(processed_ims)

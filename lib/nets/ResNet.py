@@ -3,6 +3,8 @@ import math
 import torch.utils.model_zoo as model_zoo
 from model.config import cfg
 import numpy as np
+from .dropblock import DropBlock2DMix
+
 
 __all__ = ['ResNet', 'resnet18', 'resnet34', 'resnet50', 'resnet101',
            'resnet152']
@@ -15,6 +17,10 @@ model_urls = {
     'resnet101': 'https://download.pytorch.org/models/resnet101-5d3b4d8f.pth',
     'resnet152': 'https://download.pytorch.org/models/resnet152-b121ed2d.pth',
 }
+
+
+#dropblock = DropBlock2DMix
+
 
 
 def conv3x3(in_planes, out_planes, stride=1):
@@ -35,6 +41,7 @@ class BasicBlock(nn.Module):
         self.bn2 = nn.BatchNorm2d(planes)
         self.downsample = downsample
         self.stride = stride
+        #self.dropblock = dropblock()
 
     def forward(self, x):
         lam = cfg.lamda
@@ -44,12 +51,13 @@ class BasicBlock(nn.Module):
         out = self.conv1(x)
         out = self.bn1(out)
         out = self.relu(out)
-        if cfg.MIX_LOCATION == 1:
-          rcnn_index = np.arange(out.size()[0])
-          np.random.shuffle(rcnn_index)
-          self.rcnn_mix_index = rcnn_index
-          out = lam * out + (1 - lam) * out[rcnn_index, :]
-
+###########################################################################################################################
+        # if cfg.MIX_LOCATION == 1:
+        #   rcnn_index = np.arange(out.size()[0])
+        #   np.random.shuffle(rcnn_index)
+        #   #self.rcnn_mix_index = rcnn_index
+        #   #out = lam * out + (1 - lam) * out[rcnn_index, :]
+        #   out, self.rcnn_index = self.dropblock.forward(out, rcnn_index)
 
         out = self.conv2(out)
         out = self.bn2(out)
@@ -59,12 +67,13 @@ class BasicBlock(nn.Module):
 
         out += residual
         out = self.relu(out)
-        if cfg.MIX_LOCATION == 2:
-          rcnn_index = np.arange(out.size()[0])
-          np.random.shuffle(rcnn_index)
-          self.rcnn_mix_index = rcnn_index
-          out = lam * out + (1 - lam) * out[rcnn_index, :]
-
+        # if cfg.MIX_LOCATION == 2:
+        #   rcnn_index = np.arange(out.size()[0])
+        #   np.random.shuffle(rcnn_index)
+        #   #self.rcnn_mix_index = rcnn_index
+        #   #out = lam * out + (1 - lam) * out[rcnn_index, :]
+        #   out, self.rcnn_index = self.dropblock.forward(out, rcnn_index)
+########################################################################################################################
         return out
 
 
@@ -83,6 +92,7 @@ class Bottleneck(nn.Module):
         self.relu = nn.ReLU(inplace=True)
         self.downsample = downsample
         self.stride = stride
+        #self.dropblock = dropblock()
 
     def forward(self, x):
         lam = cfg.lamda
@@ -91,20 +101,23 @@ class Bottleneck(nn.Module):
         out = self.conv1(x)
         out = self.bn1(out)
         out = self.relu(out)
-        if cfg.MIX_LOCATION == 1 and cfg.layer4 == True:
-          rcnn_index = np.arange(out.size()[0])
-          np.random.shuffle(rcnn_index)
-          self.rcnn_mix_index = rcnn_index
-          out = lam * out + (1 - lam) * out[rcnn_index, :]
+###########################################################################################################################
+#        if cfg.MIX_LOCATION == 1 and cfg.layer4 == True:
+#          rcnn_index = np.arange(out.size()[0])
+#          np.random.shuffle(rcnn_index)
+#          self.rcnn_mix_index = rcnn_index
+          #out = lam * out + (1 - lam) * out[rcnn_index, :]
+#          out, self.rcnn_index = self.dropblock.forward(out, rcnn_index)
 
         out = self.conv2(out)
         out = self.bn2(out)
         out = self.relu(out)
-        if cfg.MIX_LOCATION == 2 and cfg.layer4 == True:
-          rcnn_index = np.arange(out.size()[0])
-          np.random.shuffle(rcnn_index)
-          self.rcnn_mix_index = rcnn_index
-          out = lam * out + (1 - lam) * out[rcnn_index, :]
+#        if cfg.MIX_LOCATION == 2 and cfg.layer4 == True:
+#          rcnn_index = np.arange(out.size()[0])
+#          np.random.shuffle(rcnn_index)
+          #self.rcnn_mix_index = rcnn_index
+          #out = lam * out + (1 - lam) * out[rcnn_index, :]
+#          out, self.rcnn_index = self.dropblock.forward(out, rcnn_index)
 
         out = self.conv3(out)
         out = self.bn3(out)
@@ -114,12 +127,13 @@ class Bottleneck(nn.Module):
 
         out += residual
         out = self.relu(out)
-        if cfg.MIX_LOCATION == 3 and cfg.layer4 == True:
-          rcnn_index = np.arange(out.size()[0])
-          np.random.shuffle(rcnn_index)
-          self.rcnn_mix_index = rcnn_index
-          out = lam * out + (1 - lam) * out[rcnn_index, :]
-
+#        if cfg.MIX_LOCATION == 3 and cfg.layer4 == True:
+#          rcnn_index = np.arange(out.size()[0])
+#          np.random.shuffle(rcnn_index)
+          #self.rcnn_mix_index = rcnn_index
+          #out = lam * out + (1 - lam) * out[rcnn_index, :]
+ #         out, self.rcnn_index = self.dropblock.forward(out, rcnn_index)
+#########################################################################################################################
         return out
 
 
@@ -128,8 +142,7 @@ class ResNet(nn.Module):
     def __init__(self, block, layers, num_classes=1000):
         self.inplanes = 64
         super(ResNet, self).__init__()
-        self.conv1 = nn.Conv2d(3, 64, kernel_size=7, stride=2, padding=3,
-                               bias=False)
+        self.conv1 = nn.Conv2d(3, 64, kernel_size=7, stride=2, padding=3, bias=False)
         self.bn1 = nn.BatchNorm2d(64)
         self.relu = nn.ReLU(inplace=True)
         self.maxpool = nn.MaxPool2d(kernel_size=3, stride=2, padding=1)
@@ -139,6 +152,7 @@ class ResNet(nn.Module):
         self.layer4 = self._make_layer(block, 512, layers[3], stride=2)
         self.avgpool = nn.AvgPool2d(7, stride=1)
         self.fc = nn.Linear(512 * block.expansion, num_classes)
+        #self.dropblock = dropblock()
 
         for m in self.modules():
             if isinstance(m, nn.Conv2d):
@@ -163,24 +177,43 @@ class ResNet(nn.Module):
         for i in range(1, blocks):
             layers.append(block(self.inplanes, planes))
 
+
         return nn.Sequential(*layers)
 
-    def forward(self, x):
-        print('class ResNet(nn.Module):')
+    def forward(self, x, rcnn_mix_index):
+        lam = cfg.lamda
+        if cfg.MIX_LOCATION != 0:
+            cfg.layer4 = True
+
         x = self.conv1(x)
         x = self.bn1(x)
         x = self.relu(x)
         x = self.maxpool(x)
 
         x = self.layer1(x)
+ #       if cfg.MIX_LOCATION == 2 and cfg.layer4 == True:
+ #           x, self.rcnn_index = self.dropblock.forward(x, rcnn_index)
+
         x = self.layer2(x)
+       # if cfg.MIX_LOCATION == 2 and cfg.layer4 == True:
+       #     x, self.rcnn_index = self.dropblock.forward(x, rcnn_index)
+
         x = self.layer3(x)
+#        if cfg.MIX_LOCATION == 2 and cfg.layer4 == True:
+#            x, self.rcnn_index = self.dropblock.forward(x, rcnn_index)
+
         x = self.layer4(x)
+        print("[] test Resnet forward")
+        if cfg.MIX_LOCATION == 2 and cfg.layer4 == True:
+            x, _ = self.dropblock.forward(x, rcnn_mix_index)
+
+
 
         x = self.avgpool(x)
         x = x.view(x.size(0), -1)
         x = self.fc(x)
 
+        cfg.layer4 = False
         return x
 
 

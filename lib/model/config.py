@@ -38,7 +38,7 @@ __C.demo_dir = '/media/zhangyiwen/zhangyiwen/CDW2014/dataset'
 
 # Mixup lamda
 #__C.lamda = genLamda()
-__C.lamda = 0.9909651267746199
+__C.lamda = 0.95
 
 # loss strategy 1 old,  2 new,sperate train
 __C.loss_strategy = 'RCNN_ONLY'

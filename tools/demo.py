@@ -279,7 +279,7 @@ if __name__ == '__main__':
 
     print('Loaded network {:s}'.format(saved_model))
 
-    isCDnet = True
+    isCDnet = False
 
     if isCDnet == False:
       im_names = ['000456.jpg', '000542.jpg', '001150.jpg',

@@ -24,6 +24,9 @@ from torch.utils.checkpoint import checkpoint_sequential
 import nets.ResNet
 from nets.ResNet import BasicBlock, Bottleneck
 
+from .dropblock import DropBlock2DMix
+dropblock = DropBlock2DMix
+
 class ResNet(nets.ResNet.ResNet):
   def __init__(self, block, layers, num_classes=1000):
     self.inplanes = 64
@@ -103,23 +106,32 @@ class resnetv1(Network):
     self._num_layers = num_layers
     self._net_conv_channels = 1024
     self._fc7_channels = 2048
+    self.dropblock = dropblock()
 
   def _crop_pool_layer(self, bottom, rois):
     return Network._crop_pool_layer(self, bottom, rois, cfg.RESNET.MAX_POOL)
 
-  def _image_to_head(self):
+  def _image_to_head(self, rcnn_mix_index):
     net_conv = self._layers['head'](self._image)
     self._act_summaries['conv'] = net_conv
 
     return net_conv
 
-  def _head_to_tail(self, pool5):
+  def _head_to_tail(self, pool5, rcnn_mix_index):
+    lam = cfg.lamda
     if cfg.MIX_LOCATION != 0:
       cfg.layer4 = True
     num_segments = 2
-    fc7 = checkpoint_sequential(self.resnet.layer4, num_segments, pool5)
-    fc7 = fc7.mean(3).mean(2)
-#    fc7 = self.resnet.layer4(pool5).mean(3).mean(2) # average pooling after layer4
+    #fc7 = checkpoint_sequential(self.resnet.layer4, num_segments, pool5)
+    #fc7 = fc7.mean(3).mean(2)
+    fc7 = self.resnet.layer4(pool5).mean(3).mean(2) # average pooling after layer4
+    print(fc7.shape)
+
+    if (cfg.MIX_LOCATION == 2 or cfg.MIX_LOCATION == 1) and cfg.layer4 == True:
+      # self.rcnn_mix_index = rcnn_index
+      #fc7 = lam * fc7 + (1 - lam) * fc7[rcnn_mix_index, :]
+      fc7 = self.dropblock(fc7, rcnn_mix_index)
+
     cfg.layer4 = False
     return fc7
 
@@ -155,12 +167,10 @@ class resnetv1(Network):
         for p in m.parameters(): p.requires_grad=False
 
     self.resnet.apply(set_bn_fix)
-##############################################################################################################
     # Build resnet.
     self._layers['head'] = nn.Sequential(self.resnet.conv1, self.resnet.bn1,self.resnet.relu, 
       self.resnet.maxpool,self.resnet.layer1,self.resnet.layer2,self.resnet.layer3)
 
-##############################################################################################################
 
   def train(self, mode=True):
     # Override train so that the training mode is set as we want
