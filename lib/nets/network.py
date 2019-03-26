@@ -501,8 +501,9 @@ class Network(nn.Module):
       # lam = cfg.lamda
 ########################################################################################################################
       #pool5 = lam * pool5 + (1 - lam) * pool5[rcnn_index, :]
+
       if cfg.MIX_LOCATION == 0:
-        pool5, _ = self.dropblock.forward(pool5, rcnn_index)
+        pool5, _, lam = self.dropblock.forward(pool5, rcnn_index, self._mode)
 ########################################################################################################################
 
     if self._mode == 'TRAIN':
@@ -510,8 +511,9 @@ class Network(nn.Module):
     # [256,2048]
 
     # mixup in layer4
-    fc7 = self._head_to_tail(pool5, self.rcnn_mix_index)
+    fc7, lam = self._head_to_tail(pool5, self.rcnn_mix_index, self._mode)
 
+    cfg.lamda = lam
     #--------------------------------softmax,bouding box --------------------------------------------------------------------
     cls_prob, bbox_pred = self._region_classification(fc7)
     

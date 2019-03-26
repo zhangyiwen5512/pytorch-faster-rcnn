@@ -117,23 +117,24 @@ class resnetv1(Network):
 
     return net_conv
 
-  def _head_to_tail(self, pool5, rcnn_mix_index):
+  def _head_to_tail(self, pool5, rcnn_mix_index, mode):
     lam = cfg.lamda
     if cfg.MIX_LOCATION != 0:
       cfg.layer4 = True
     num_segments = 2
-    #fc7 = checkpoint_sequential(self.resnet.layer4, num_segments, pool5)
-    #fc7 = fc7.mean(3).mean(2)
-    fc7 = self.resnet.layer4(pool5).mean(3).mean(2) # average pooling after layer4
-    print(fc7.shape)
 
     if (cfg.MIX_LOCATION == 2 or cfg.MIX_LOCATION == 1) and cfg.layer4 == True:
       # self.rcnn_mix_index = rcnn_index
       #fc7 = lam * fc7 + (1 - lam) * fc7[rcnn_mix_index, :]
-      fc7 = self.dropblock(fc7, rcnn_mix_index)
+      pool5, _, lam = self.dropblock(pool5, rcnn_mix_index, mode)
+
+    fc7 = checkpoint_sequential(self.resnet.layer4, num_segments, pool5)
+    fc7 = fc7.mean(3).mean(2)
+    #fc7 = self.resnet.layer4(pool5).mean(3).mean(2) # average pooling after layer4
+
 
     cfg.layer4 = False
-    return fc7
+    return fc7, lam
 
   def _init_head_tail(self):
     # choose different blocks for different number of layers

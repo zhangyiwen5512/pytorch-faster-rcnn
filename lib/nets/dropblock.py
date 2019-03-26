@@ -10,25 +10,26 @@ class DropBlock2DMix(nn.Module):
     """
     DropBlock with mixing
     """
-    def __init__(self, block_size = 3, drop_prob = 1, test=False, extra_mix=True):
+    def __init__(self, block_size = 3, drop_prob = 1., test=False, extra_mix=True):
         super(DropBlock2DMix, self).__init__()
-        print("[*] using Dropblock mix")
+        print("[*] using Dropblock mix training={}".format(self.training))
         print("[***]  Setting fixed drop_window")
         self.drop_prob = drop_prob
         self.block_size = block_size
         self.test = test
         self.extra_mix = extra_mix
+        self.expandsize = 16
 
-    def forward(self, x, index=None):
+    def forward(self, x, index=None, mode='TRAIN'):
         # shape: (bsize, channels, height, width)
-
         assert x.dim() == 4, \
             "Expected input with 4 dimensions (bsize, channels, height, width)"
 
-        if not self.training or self.drop_prob == 0.:
-            # raise ValueError("Dropblock mix, drop_prob > 0 ?")
-            return x, None
-        else:
+        if mode == 'TEST' :  #or self.drop_prob == 0.
+            print("dropblock no training {}".format(self.training))
+            #raise ValueError("Dropblock mix, drop_prob > 0 ?")
+            return x, None, None
+        elif mode == 'TRAIN':
             # sample from a mask
             mask_reduction = self.block_size // 2
             mask_height = x.shape[-2] - mask_reduction
@@ -47,7 +48,8 @@ class DropBlock2DMix(nn.Module):
             # if self.test: print("---  mask ---\n", mask)
             bs = x.shape[0]
             hw = mask_width
-            rads = torch.randint(0, hw * hw, (bs,)).long()
+            #rads = torch.randint(0, hw * hw, (bs,)).long()
+            rads = torch.randint(0, hw * hw, (1,)).long().repeat(bs)
             rads = torch.unsqueeze(rads, 1)
             mask = torch.zeros(bs, hw*hw).scatter_(1, rads, 1).reshape((bs,hw,hw))
 
@@ -69,10 +71,9 @@ class DropBlock2DMix(nn.Module):
 
             if self.extra_mix:
                 lam = 1 - 0.99
-                out = x*block_mask[:, None, :, :]*(1-lam) + \
-                      x*verse_mask[:, None, :, :]*lam + \
-                      x[index, :]*block_mask[:, None, :, :]*(lam) + \
-                      x[index, :]*verse_mask[:, None, :, :]*(1-lam)
+                out = x * block_mask[:, None, :, :] * (1 - lam) + x * verse_mask[:, None, :, :] * lam + \
+                      x[index, :] * block_mask[:, None, :, :] * (lam) + \
+                      x[index, :] * verse_mask[:, None, :, :] * (1 - lam)
             else:
                 out = x * block_mask[:, None, :, :] + \
                       x[index, :] * verse_mask[:, None, :, :] #* 0.1 这里需注意，是否加0.1
@@ -80,7 +81,14 @@ class DropBlock2DMix(nn.Module):
             # scale output
             # out = out * block_mask.numel() / block_mask.sum()
 
-            return out, index
+            mask_sight = F.conv2d(block_mask[0, None, :, :].unsqueeze(0), torch.ones((1, 1, self.expandsize, self.expandsize)).to(mask.device), padding=(self.expandsize - 1)).sum().item()
+            vmask_sight = F.conv2d(verse_mask[0, None, :, :].unsqueeze(0), torch.ones((1, 1, self.expandsize, self.expandsize)).to(mask.device), padding=(self.expandsize - 1)).sum().item()
+            # mask_sight = F.conv2d(block_mask[0, None, :, :].unsqueeze(0), torch.ones((1, 1, self.expandsize, self.expandsize)), padding=(self.expandsize - 1)).sum().item()
+            # vmask_sight = F.conv2d(verse_mask[0, None, :, :].unsqueeze(0), torch.ones((1, 1, self.expandsize, self.expandsize)), padding=(self.expandsize - 1)).sum().item()
+
+            lam = mask_sight / (mask_sight + vmask_sight)
+
+            return out, index, lam
 
     def _compute_block_mask(self, mask):
         block_mask = F.conv2d(mask[:, None, :, :],
