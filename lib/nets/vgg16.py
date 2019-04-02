@@ -81,7 +81,7 @@ class vgg16(Network):
       if x.dim != 4:
         x = x.view(pool5.size(0), 64, 8, 8)
         #x.view((pool5.size))
-      x, _ , lam = self.dropblock(x, rcnn_mix_index)
+      x, _ , lam = self.dropblock(x, rcnn_mix_index, mode)
       x = x.view(shape)
 
 

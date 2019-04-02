@@ -26,7 +26,7 @@ class DropBlock2DMix(nn.Module):
             "Expected input with 4 dimensions (bsize, channels, height, width)"
 
         if mode == 'TEST' :  #or self.drop_prob == 0.
-            print("dropblock no training {}".format(self.training))
+            #print("dropblock no training {}".format(self.training))
             #raise ValueError("Dropblock mix, drop_prob > 0 ?")
             return x, None, None
         elif mode == 'TRAIN':
@@ -68,6 +68,7 @@ class DropBlock2DMix(nn.Module):
                 index = torch.randperm(batch_size).cuda()
             verse_mask = torch.ones_like(block_mask) - block_mask
             if self.test: print("--- verse_mask ---", verse_mask)
+
 
             if self.extra_mix:
                 lam = 1 - 0.99
