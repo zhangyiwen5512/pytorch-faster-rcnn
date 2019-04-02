@@ -42,7 +42,7 @@ __C.loss_strategy = 'RCNN_ONLY'
 #__C.loss_strategy = 'NOCHANGE'
 
 #mix in layer[4] 0 = close 1,2,3=mix location    vgg16 dont have loc3
-__C.MIX_LOCATION = 2
+__C.MIX_LOCATION = 1
 __C.layer4 = False
 
 
@@ -333,6 +333,9 @@ def get_output_dir(imdb, weights_filename):
       weights_filename = 'RCNN_ONLY'
     elif __C.loss_strategy == 'RPN_ONLY':
       weights_filename = 'RPN_ONLY'
+
+  if weights_filename != 'NOCHANGE':
+    weights_filename += '_loc' + str(cfg.MIX_LOCATION)
   outdir = osp.join(outdir, weights_filename)
   if not os.path.exists(outdir):
     os.makedirs(outdir)
@@ -356,6 +359,10 @@ def get_output_tb_dir(imdb, weights_filename):
       weights_filename = 'RCNN_ONLY'
     elif __C.loss_strategy == 'RPN_ONLY':
       weights_filename = 'RPN_ONLY'
+
+  if weights_filename != 'NOCHANGE':
+    weights_filename += '_loc' + str(cfg.MIX_LOCATION)
+
   outdir = osp.join(outdir, weights_filename)
   if not os.path.exists(outdir):
     os.makedirs(outdir)

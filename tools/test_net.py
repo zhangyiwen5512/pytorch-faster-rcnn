@@ -92,6 +92,8 @@ if __name__ == '__main__':
       tag = 'RPN_ONLY'
     else:
       pass
+  if tag != 'NOCHANGE':
+    tag += '_loc' + str(cfg.MIX_LOCATION)
   filename = tag + '/' + filename
 
   imdb = get_imdb(args.imdb_name)
@@ -135,6 +137,8 @@ if __name__ == '__main__':
         m = 'RCNN_ONLY'
       elif cfg.loss_strategy == 'RPN_ONLY' and m == 'default':
         m = 'RPN_ONLY'
+      if m == 'RCNN+RPN'  or   m == 'RPN_ONLY'  or  m == 'RCNN_ONLY':
+        m += '_loc' + str(cfg.MIX_LOCATION)
       model += '/' + m
     args.model = '.' + model
     print(('Loading model check point from {:s}').format(args.model))
